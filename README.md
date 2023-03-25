@@ -1,0 +1,2 @@
+Wallbox integration for Domoticz.
+
