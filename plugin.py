@@ -3,7 +3,7 @@
 # Author: lokonli
 #
 """
-<plugin key="Wallbox" name="Wallbox" author="lokonli" version="0.0.1" wikilink="https://github.com/lokonli/domoticz-wallbox" externallink="https://github.com/lokonli/domoticz-wallbox">
+<plugin key="Wallbox" name="Wallbox" author="lokonli" version="0.0.2" wikilink="https://github.com/lokonli/domoticz-wallbox" externallink="https://github.com/lokonli/domoticz-wallbox">
     <description>
         <h2>Wallbox plugin for Domoticz</h2><br/>
         <h3>Features</h3>
@@ -20,6 +20,7 @@
             <li>Charging current - Device to show the actual charging current</li>
             <li>Charging Start Stop - Device to start/stop charging. </li>
             <li>Session Energy - Total Energy charged during the last session. </li>
+            <li>Total Energy - Total Energy charged. </li>
         </ul>
         <h3>Configuration</h3>
         Fill in your Wallbox email and password. 
