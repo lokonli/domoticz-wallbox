@@ -67,12 +67,14 @@ class WallboxPlugin:
     DEVICECURRENT = 5
     DEVICESTARTSTOP = 6
     DEVICEENERGY = 7
+    DEVICETOTALENERGY = 8
 
 
     def __init__(self):
         self.messageQueue = queue.Queue()
         self.countDownInit = 3 #Update devices every countDownInit * 10 seconds
         self.countDown = 1
+        self.lastValue = 0
 
     def wbThread(self):
         Domoticz.Log('Start Wallbox thread')
@@ -265,6 +267,12 @@ class WallboxPlugin:
 #                          "Custom": "1;kWh"
                     }
             },
+            { #8
+                "Unit": self.DEVICETOTALENERGY,
+                "Name": "Total Energy",
+                "Type": 243,
+                "Subtype": 29,
+            }
         ]
         id=str(chargerId)
         try:
@@ -372,6 +380,33 @@ class WallboxPlugin:
             myUnit.nValue = 0
             myUnit.Update()
             Domoticz.Debug('Added Energy changed to: ' + str(sValue))
+
+        ## 8: Total Energy
+        #calculate new cumulative
+        myUnit = Devices[chargerId].Units[self.DEVICETOTALENERGY]
+        delta = 0
+        if self.lastValue>0 and addedEnergy<self.lastValue:   # probably started new session, reset lastValue
+            Domoticz.Log("resetting lastValue; start new session")
+            self.lastValue = 0
+
+        if addedEnergy>self.lastValue:
+            delta = addedEnergy - self.lastValue
+        self.lastValue = addedEnergy
+
+        # get current cumulative value, and increment
+        sValues = myUnit.sValue.split(";")
+        if len(sValues)==2:
+            currentValue = sValues[1]
+        else:
+            currentValue = "0"
+            
+        newValue = 0
+        if currentValue.isnumeric():
+            newValue = int(currentValue) + delta
+        
+        myUnit.sValue = f"{chargingCurrent * 1000};{str(newValue)}"
+        myUnit.nValue = 0
+        myUnit.Update(Log=True)
 
 
     def onStop(self):
