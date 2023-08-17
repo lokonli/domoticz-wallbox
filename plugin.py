@@ -405,7 +405,8 @@ class WallboxPlugin:
         if currentValue.isnumeric():
             newValue = int(currentValue) + delta
         
-        myUnit.sValue = f"{chargingCurrent * 1000};{str(newValue)}"
+        ## myUnit.sValue = f"{chargingCurrent * 1000};{str(newValue)}"
+        myUnit.sValue = f"{str(0)};{str(newValue)}"
         myUnit.nValue = 0
         myUnit.Update(Log=True)
 
