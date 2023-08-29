@@ -21,6 +21,7 @@
             <li>Charging Start Stop - Device to start/stop charging. </li>
             <li>Session Energy - Total Energy charged during the last session. </li>
             <li>Total Energy - Total Energy charged. </li>
+            <li>Firmware Update - Inform about Firmware Updates. </li>
         </ul>
         <h3>Configuration</h3>
         Fill in your Wallbox email and password. 
@@ -69,7 +70,7 @@ class WallboxPlugin:
     DEVICESTARTSTOP = 6
     DEVICEENERGY = 7
     DEVICETOTALENERGY = 8
-
+    DEVICEFIRMWARE = 9
 
     def __init__(self):
         self.messageQueue = queue.Queue()
@@ -273,6 +274,12 @@ class WallboxPlugin:
                 "Name": "Total Energy",
                 "Type": 243,
                 "Subtype": 29,
+            },
+            { #9
+                "Unit": self.DEVICEFIRMWARE,
+                "Name": "Firmware Update",
+                "Type": 243,
+                "Subtype": 19,
             }
         ]
         id=str(chargerId)
@@ -409,6 +416,26 @@ class WallboxPlugin:
         myUnit.sValue = f"{str(0)};{str(newValue)}"
         myUnit.nValue = 0
         myUnit.Update(Log=True)
+
+        ## 9: Device Firmware Update
+        # Check for Firmware Updates
+        myUnit = Devices[chargerId].Units[self.DEVICEFIRMWARE]
+
+        updateAvailable = chargerStatus["config_data"]["software"]["updateAvailable"]
+        currentVersion =  chargerStatus["config_data"]["software"]["currentVersion"]
+        latestVersion =   chargerStatus["config_data"]["software"]["latestVersion"]
+
+        if updateAvailable:
+            sValue = f"Firmware Update Available \nCurrent Version: {currentVersion}\nLatest Version: {latestVersion}"
+        else:
+            sValue = f"No Firmware Update Available\nCurrent Version: {currentVersion}\nLatest Version: {latestVersion}"
+
+        Domoticz.Debug('Firmware DEBUG status: ' + sValue)
+        
+        if myUnit.sValue != sValue:
+            myUnit.sValue = sValue
+            myUnit.Update(Log=True)
+            Domoticz.Debug('Firmware status changed to: ' + sValue)
 
 
     def onStop(self):
