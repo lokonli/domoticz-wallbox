@@ -246,9 +246,9 @@ class WallboxPlugin:
             },
             { #5
                 "Unit": self.DEVICECURRENT,
-                "Name": "Charging current",
-                "Type": 243,
-                "Subtype": 23,
+                "Name": "Charging Power",
+                "Type": 248,
+                "Subtype": 1,
             },
             { #6
                 "Unit": self.DEVICESTARTSTOP,
@@ -351,14 +351,14 @@ class WallboxPlugin:
             myUnit.Update(Log=True)
             Domoticz.Debug('Charging status changed to: ' + chargingStatus)
 
-        ## 5: Charging current
+        ## 5: Charging current (This is represented in kW), not in 'A' what 'current' is.
         myUnit = Devices[chargerId].Units[self.DEVICECURRENT]
-        chargingCurrent = str(round(chargerStatus["charging_power"],1))
-        sValue = f"{chargingCurrent};{chargingCurrent}"
+        chargingCurrent = str(round(chargerStatus["charging_power"]*1000,1))
+        sValue = f"{chargingCurrent}"
         if myUnit.sValue != sValue:
             myUnit.sValue = sValue
             myUnit.Update(Log=True)
-            Domoticz.Debug('Charging current changed to: ' + chargingCurrent)
+            Domoticz.Debug('Charging Power changed to: ' + chargingCurrent)
         
         ## 6: Charging stop start
         myUnit = Devices[chargerId].Units[self.DEVICESTARTSTOP]
