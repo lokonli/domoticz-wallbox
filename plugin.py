@@ -21,6 +21,7 @@
             <li>Charging Start Stop - Device to start/stop charging. </li>
             <li>Session Energy - Total Energy charged during the last session. </li>
             <li>Total Energy - Total Energy charged. </li>
+            <li>Firmware Update - Inform about Firmware Updates. </li>
         </ul>
         <h3>Configuration</h3>
         Fill in your Wallbox email and password. 
@@ -69,7 +70,7 @@ class WallboxPlugin:
     DEVICESTARTSTOP = 6
     DEVICEENERGY = 7
     DEVICETOTALENERGY = 8
-
+    DEVICEFIRMWARE = 9
 
     def __init__(self):
         self.messageQueue = queue.Queue()
@@ -246,9 +247,9 @@ class WallboxPlugin:
             },
             { #5
                 "Unit": self.DEVICECURRENT,
-                "Name": "Charging current",
-                "Type": 243,
-                "Subtype": 23,
+                "Name": "Charging Power",
+                "Type": 248,
+                "Subtype": 1,
             },
             { #6
                 "Unit": self.DEVICESTARTSTOP,
@@ -273,6 +274,12 @@ class WallboxPlugin:
                 "Name": "Total Energy",
                 "Type": 243,
                 "Subtype": 29,
+            },
+            { #9
+                "Unit": self.DEVICEFIRMWARE,
+                "Name": "Firmware Update",
+                "Type": 243,
+                "Subtype": 19,
             }
         ]
         id=str(chargerId)
@@ -351,14 +358,14 @@ class WallboxPlugin:
             myUnit.Update(Log=True)
             Domoticz.Debug('Charging status changed to: ' + chargingStatus)
 
-        ## 5: Charging current
+        ## 5: Charging current (This is represented in kW), not in 'A' what 'current' is.
         myUnit = Devices[chargerId].Units[self.DEVICECURRENT]
-        chargingCurrent = str(round(chargerStatus["charging_power"],1))
-        sValue = f"{chargingCurrent};{chargingCurrent}"
+        chargingCurrent = str(round(chargerStatus["charging_power"]*1000,1))
+        sValue = f"{chargingCurrent}"
         if myUnit.sValue != sValue:
             myUnit.sValue = sValue
             myUnit.Update(Log=True)
-            Domoticz.Debug('Charging current changed to: ' + chargingCurrent)
+            Domoticz.Debug('Charging Power changed to: ' + chargingCurrent)
         
         ## 6: Charging stop start
         myUnit = Devices[chargerId].Units[self.DEVICESTARTSTOP]
@@ -405,9 +412,30 @@ class WallboxPlugin:
         if currentValue.isnumeric():
             newValue = int(currentValue) + delta
         
-        myUnit.sValue = f"{chargingCurrent * 1000};{str(newValue)}"
+        ## myUnit.sValue = f"{chargingCurrent * 1000};{str(newValue)}"
+        myUnit.sValue = f"{str(0)};{str(newValue)}"
         myUnit.nValue = 0
         myUnit.Update(Log=True)
+
+        ## 9: Device Firmware Update
+        # Check for Firmware Updates
+        myUnit = Devices[chargerId].Units[self.DEVICEFIRMWARE]
+
+        updateAvailable = chargerStatus["config_data"]["software"]["updateAvailable"]
+        currentVersion =  chargerStatus["config_data"]["software"]["currentVersion"]
+        latestVersion =   chargerStatus["config_data"]["software"]["latestVersion"]
+
+        if updateAvailable:
+            sValue = f"Firmware Update Available \nCurrent Version: {currentVersion}\nLatest Version: {latestVersion}"
+        else:
+            sValue = f"No Firmware Update Available\nCurrent Version: {currentVersion}\nLatest Version: {latestVersion}"
+
+        Domoticz.Debug('Firmware DEBUG status: ' + sValue)
+        
+        if myUnit.sValue != sValue:
+            myUnit.sValue = sValue
+            myUnit.Update(Log=True)
+            Domoticz.Debug('Firmware status changed to: ' + sValue)
 
 
     def onStop(self):
