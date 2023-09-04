@@ -3,7 +3,7 @@
 # Author: lokonli
 #
 """
-<plugin key="Wallbox" name="Wallbox" author="lokonli" version="0.0.2" wikilink="https://github.com/lokonli/domoticz-wallbox" externallink="https://github.com/lokonli/domoticz-wallbox">
+<plugin key="Wallbox" name="Wallbox" author="lokonli" version="0.0.3" wikilink="https://github.com/lokonli/domoticz-wallbox" externallink="https://github.com/lokonli/domoticz-wallbox">
     <description>
         <h2>Wallbox plugin for Domoticz</h2><br/>
         <h3>Features</h3>
