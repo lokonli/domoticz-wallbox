@@ -98,15 +98,23 @@ class WallboxPlugin:
         self.totalEnergy = 0
         self.totalGreenEnergy = 0      # We will be using this to calculate GREEN energy
         self.pluginJustStarted = True  # Used to prevent dual entries set to True if plugin starts!
+        self.lastRunDate = "1990-01-01"
  #       self.starthour = int(Parameters["Mode2"])
  #       self.startminute = int(Parameters["Mode3"])
  #       self.startday = int(Parameters["Mode1"])               # Sunday
 
     def wbThread(self):
         Domoticz.Log('Start Wallbox thread')
+        
+        #now = datetime.now()
+        # Calculate yesterday's date by subtracting one day from the current date
+        #yesterday = now - timedelta(days=1)
+        #self.lastRunDate = yesterday
+    
         self.starthour = int(Parameters["Mode2"])
         self.startminute = int(Parameters["Mode3"])
         self.startday = int(Parameters["Mode1"])               # Sunday
+
         self.wallbox = Wallbox(Parameters["Username"], Parameters["Password"])
         w=self.wallbox
         self.authenticated = False
@@ -148,7 +156,7 @@ class WallboxPlugin:
 
 
                 if (Message["Type"] == "Update"):
-                    for chargerId in chargerList:
+                    for chargerId in self.chargerList:
                         self.updateDevices(str(chargerId))
                 elif (Message["Type"] == "Command"):
                     deviceID = Message["DeviceID"]
@@ -398,16 +406,19 @@ class WallboxPlugin:
 
     def runScheduledTask(self):
         # Run this tasks for all chargers in the list.
-       if len(self.chargerList):
+        if len(self.chargerList):
             now = datetime.datetime.now()
+            nowAsDateString = now.strftime("%Y-%m-%d")
             # Check if it's Sunday (day 6) and the time is 03:00    
-            if now.weekday() == self.startday and now.hour == self.starthour and now.minute == self.startminute:
+            if nowAsDateString > self.lastRunDate and now.weekday() == self.startday and now.hour == self.starthour and now.minute == self.startminute:
+                self.lastRunDate = nowAsDateString
+                Domoticz.Log(f"Updated lastRunDate to: {nowAsDateString}")
                 for chargerId in self.chargerList:
                     Domoticz.Log(f"Running scheduled task for charger {chargerId} to fill historic energy data...")
                  # Charger ID to use
                     self.fillHistoricEnergyData(chargerId)
-                else:
-                    Domoticz.Log('No charger configured.')
+        else:
+           Domoticz.Log('No charger configured.')
 
     def updateDevices(self, chargerId):
         chargerStatus = self.wallbox.getChargerStatus(chargerId)
