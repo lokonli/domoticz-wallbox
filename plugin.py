@@ -99,22 +99,34 @@ class WallboxPlugin:
         self.totalGreenEnergy = 0      # We will be using this to calculate GREEN energy
         self.pluginJustStarted = True  # Used to prevent dual entries set to True if plugin starts!
         self.lastRunDate = "1990-01-01"
- #       self.starthour = int(Parameters["Mode2"])
- #       self.startminute = int(Parameters["Mode3"])
- #       self.startday = int(Parameters["Mode1"])               # Sunday
 
     def wbThread(self):
         Domoticz.Log('Start Wallbox thread')
-        
-        #now = datetime.now()
-        # Calculate yesterday's date by subtracting one day from the current date
-        #yesterday = now - timedelta(days=1)
-        #self.lastRunDate = yesterday
-    
-        self.starthour = int(Parameters["Mode2"])
-        self.startminute = int(Parameters["Mode3"])
-        self.startday = int(Parameters["Mode1"])               # Sunday
 
+        self.startday = int(Parameters["Mode1"])
+
+        try:
+            self.starthour = int(Parameters["Mode2"])
+        except:
+            message = Parameters["Mode2"]
+            Domoticz.Error(f"Invalid starthour value: {message}")
+            return
+        
+        if (not is_valid_hour(self.starthour)):
+            Domoticz.Error(f"Invalid starthour (0-23): {self.starthour}")
+            return
+
+        try:
+            self.startminute = int(Parameters["Mode3"])
+        except:
+            message = Parameters["Mode3"]
+            Domoticz.Error(f"Invalid startminute value: {message}")
+            return
+
+        if (not is_valid_minute(self.startminute)):
+            Domoticz.Error(f"Invalid startminute (0-59): {self.startminute}")
+            return
+        
         self.wallbox = Wallbox(Parameters["Username"], Parameters["Password"])
         w=self.wallbox
         self.authenticated = False
@@ -153,7 +165,6 @@ class WallboxPlugin:
                 except:
                     Domoticz.Error('Wallbox authentication problem. Check username password')
                     raise("Authentication problem")
-
 
                 if (Message["Type"] == "Update"):
                     for chargerId in self.chargerList:
@@ -334,22 +345,17 @@ class WallboxPlugin:
                 myUnit = Domoticz.Unit(DeviceID=id, Used=1, **defaultUnit)
                 myUnit.Create()
 
-        # Filling historic data doesn't work unfortunately, 27-08-2023 function itself looks pretty good in outcome
         # Domoticz Ticket created for that: https://github.com/domoticz/domoticz/issues/5809
-        # Updating via HTTP does work.
         # Fill the device variable with the amount of energy supplied already 
-        #  def __init__(self): ->  self.totalEnergy = 0
         self.fillHistoricEnergyData(chargerId)
 
     def fillHistoricEnergyData(self, chargerId):
         # Loads all session data, and send daily sum to Domoticz database
-        # Doesn't work, unfortunately ...
         Domoticz.Debug('Fill historic data')
 
         if self.debugging:
             self.debugpy.breakpoint()
         myUnit = Devices[str(chargerId)].Units[self.DEVICEENERGY]
-#        myUnit = Devices[str(chargerId)].Units[self.DEVICETOTALCOUNTER]
         message = f"Fill historic data myUnit: {myUnit}"
         Domoticz.Debug(message) #myUnit: Unit: 7, Name: 'Session Energy', nValue: 0, sValue: '237416;0', LastUpdate: 2023-09-04 13:30:57
         w=self.wallbox
@@ -368,7 +374,6 @@ class WallboxPlugin:
         for session in reversed(sessionList["data"]):
             Domoticz.Debug('Start Processing SessionList (2)')
             if session["type"]=="charger_log_session":
-#                sessionDate = datetime.datetime.fromtimestamp(session["attributes"]["start"]).date()
                 dt_object   = datetime.datetime.fromtimestamp(session["attributes"]["start"])
                 sessionDate = dt_object.strftime("%Y-%m-%d")
                 if currentDate=="":
@@ -578,19 +583,7 @@ class WallboxPlugin:
         # signal queue thread to exit
         self.messageQueue.put(None)
         self.messageQueue.join()
-        #Domoticz.Log("Clearing message queue..."+str(threading.active_count())+", should be 1.")
 
-        # Wait until queue thread has exited
-#        Domoticz.Log("Threads still active: "+str(threading.active_count())+", should be 1.")
-#        while (threading.active_count() > 1):
-#            for thread in threading.enumerate():
-#                if (thread.name != threading.current_thread().name):
-#                    Domoticz.Log("'"+thread.name+"' is still running, waiting otherwise Domoticz will abort on plugin exit.")
-#            time.sleep(1.0)
-#        if self.debugging:
-#            import pydevd
-#            pydevd.stoptrace()
- # Wait until queue thread has exited
         Domoticz.Debug('Threads still active: {} (should be 1)'.format(threading.active_count()))
         endTime = time.time() + 70
         while (threading.active_count() > 1) and (time.time() < endTime):
@@ -600,8 +593,6 @@ class WallboxPlugin:
             time.sleep(1.0)
 
         Domoticz.Debug('Plugin stopped - Threads still active: {} (should be 1)'.format(threading.active_count()))
-
-
 
     def onConnect(self, Connection, Status, Description):
         Domoticz.Debug('onConnect called ({}) with status={}'.format(Connection.Name, Status))        
@@ -675,6 +666,12 @@ def onHeartbeat():
     _plugin.onHeartbeat()
 
 # Generic helper functions
+def is_valid_hour(hour):
+    return 0 <= hour <= 23
+
+def is_valid_minute(minute):
+    return 0 <= minute <= 59
+
 def DumpConfigToLog():
     for x in Parameters:
         if Parameters[x] != "":
@@ -736,12 +733,10 @@ def statusAsLevelSwitch(self):
     }
     level = str(statusLevel[chargingStatus])
     
-
     if myUnit.sValue != level:
         myUnit.sValue = level
         myUnit.Update(Log=True)
         Domoticz.Debug('Charging status changed to: ' + level)
-
 
 #UPDATE THE DEVICE
 def UpdateDevice(AlwaysUpdate, Devices, Unit, nValue, sValue, **kwargs):
@@ -758,4 +753,3 @@ def UpdateDevice(AlwaysUpdate, Devices, Unit, nValue, sValue, **kwargs):
             if not kwargs.get('TimedOut', 0):
                 Devices[Unit].Touch()
     return Updated
-#http://build:8080/json.htm?type=command&param=udevice&idx=120&nvalue=0&svalue=1234;123;2023-04-01
