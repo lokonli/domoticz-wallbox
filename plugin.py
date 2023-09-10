@@ -1,9 +1,10 @@
 # Plugin for Wallbox
 #
 # Author: lokonli
+# Mods: sincze
 #
 """
-<plugin key="Wallbox-sincze" name="Wallbox-0.0.4" author="sincze" version="0.0.4" wikilink="https://github.com/lokonli/domoticz-wallbox" externallink="https://github.com/lokonli/domoticz-wallbox">
+<plugin key="Wallbox" name="Wallbox-0.0.4" author="lokonli" version="0.0.4" wikilink="https://github.com/lokonli/domoticz-wallbox" externallink="https://github.com/lokonli/domoticz-wallbox">
     <description>
         <h2>Wallbox plugin for Domoticz</h2><br/>
         <h3>Features</h3>
