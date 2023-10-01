@@ -538,25 +538,23 @@ class WallboxPlugin:
             myUnit.nValue = 0
             myUnit.Update(Log=True)
 
-       ## 9: Device Firmware Update
+        ## 9: Device Firmware Update (included chargerID if you have multiple chargers)
         myUnit = Devices[chargerId].Units[self.DEVICEFIRMWARE]
-
         updateAvailable = chargerStatus["config_data"]["software"]["updateAvailable"]
         currentVersion =  chargerStatus["config_data"]["software"]["currentVersion"]
         latestVersion =   chargerStatus["config_data"]["software"]["latestVersion"]
 
         if updateAvailable:
-            sValue = f"Update Available \nCurrent Version: {currentVersion}\nLatest Version: {latestVersion}"
+            sValue = f"Update Available Charger {chargerId}\nCurrent Version: {currentVersion}\nLatest Version: {latestVersion}"
         else:
-            sValue = f"No Update Available\nCurrent Version: {currentVersion}\nLatest Version: {latestVersion}"
+            sValue = f"No Update Available Charger {chargerId}\nCurrent Version: {currentVersion}\nLatest Version: {latestVersion}"
 
         Domoticz.Debug('Firmware DEBUG status: ' + sValue)
 
         if myUnit.sValue != sValue:
             myUnit.sValue = sValue
             myUnit.Update(Log=True)
-            Domoticz.Debug('Firmware status changed to: ' + sValue)
-
+            Domoticz.Debug('Firmware status changed to: ' + sValue)	    
 # FUN
         chargingSpeed = chargerStatus["charging_speed"]
         addedRange = chargerStatus["added_range"]
