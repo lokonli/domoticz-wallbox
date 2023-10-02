@@ -4,7 +4,7 @@
 # Mods: sincze
 #
 """
-<plugin key="Wallbox" name="Wallbox-0.0.4" author="lokonli" version="0.0.4" wikilink="https://github.com/lokonli/domoticz-wallbox" externallink="https://github.com/lokonli/domoticz-wallbox">
+<plugin key="Wallbox" name="Wallbox" author="lokonli" version="0.0.5" wikilink="https://github.com/lokonli/domoticz-wallbox" externallink="https://github.com/lokonli/domoticz-wallbox">
     <description>
         <h2>Wallbox plugin for Domoticz</h2><br/>
         <h3>Features</h3>
@@ -24,6 +24,8 @@
             <li>Total Energy - Total Energy charged. </li>
             <li>Total Green Energy - Total Green Energy charged. </li>
             <li>Firmware - Information about the installed firmware. </li>
+            <li>MaxCharging - Current Max Charging (A)</li>
+            <li>SetMaxCharging - Set Charging for Inverter (6A-32A). </li>
         </ul>
         <h3>Configuration</h3>
         Fill in your Wallbox email and password.
@@ -89,6 +91,8 @@ class WallboxPlugin:
     DEVICEFIRMWARE = 9
     DEVICETOTALCOUNTER = 10
     DEVICETOTALGREENCOUNTER = 11
+    DEVICEMAXCHARGINGCURRENT = 12
+    DEVICESELECTHARGINGCURRENT = 13
 
     def __init__(self):
         self.messageQueue = queue.Queue()
@@ -192,6 +196,11 @@ class WallboxPlugin:
                             dumpJson('Result', res)
                         elif Message["Unit"]==4: #Pause
                             res=w.pauseChargingSession(deviceID)
+                            dumpJson('Result', res)
+                        elif Message["Unit"]==13: #Set new MAX CHarging
+                            desiredmaxchargecurrent = round(Message["Level"])
+                            Domoticz.Debug('Set mew Max Charging to: ' + str(desiredmaxchargecurrent))
+                            res=w.setMaxChargingCurrent(deviceID, desiredmaxchargecurrent)
                             dumpJson('Result', res)
                         elif Message["Unit"]==6: #Charging start stop
                             chargerStatus = w.getChargerStatus(deviceID)
@@ -329,6 +338,24 @@ class WallboxPlugin:
                 "Name": "Total Green kWh",
                 "Type": 113,
                 "Subtype": 0,
+            },
+            { #12 Device MAX Charging Current (A)
+                "Unit": self.DEVICEMAXCHARGINGCURRENT,
+                "Name": "Max Charging Current",
+                "Type": 243,
+                "Subtype": 23,
+            },
+            { #13 MAX Charging Selector
+                "Unit": self.DEVICESELECTHARGINGCURRENT,
+		"Name": "Select Max Charging Current",
+                "Type": 242,
+                "Subtype": 1,
+                "Options": {
+                          "ValueStep" : "1",
+                          "ValueMin" : "6",
+                          "ValueMax" : "32",
+                          "ValueUnit" : "A"
+                }
             }
         ]
         id=str(chargerId)
@@ -511,33 +538,32 @@ class WallboxPlugin:
             myUnit.nValue = 0
             myUnit.Update(Log=True)
 
-       ## 9: Device Firmware Update
+        ## 9: Device Firmware Update (included chargerID if you have multiple chargers)
         myUnit = Devices[chargerId].Units[self.DEVICEFIRMWARE]
-
         updateAvailable = chargerStatus["config_data"]["software"]["updateAvailable"]
         currentVersion =  chargerStatus["config_data"]["software"]["currentVersion"]
         latestVersion =   chargerStatus["config_data"]["software"]["latestVersion"]
 
         if updateAvailable:
-            sValue = f"Update Available \nCurrent Version: {currentVersion}\nLatest Version: {latestVersion}"
+            sValue = f"Update Available Charger {chargerId}\nCurrent Version: {currentVersion}\nLatest Version: {latestVersion}"
         else:
-            sValue = f"No Update Available\nCurrent Version: {currentVersion}\nLatest Version: {latestVersion}"
+            sValue = f"No Update Available Charger {chargerId}\nCurrent Version: {currentVersion}\nLatest Version: {latestVersion}"
 
         Domoticz.Debug('Firmware DEBUG status: ' + sValue)
 
         if myUnit.sValue != sValue:
             myUnit.sValue = sValue
             myUnit.Update(Log=True)
-            Domoticz.Debug('Firmware status changed to: ' + sValue)
-
+            Domoticz.Debug('Firmware status changed to: ' + sValue)	    
 # FUN
         chargingSpeed = chargerStatus["charging_speed"]
         addedRange = chargerStatus["added_range"]
         addedEnergy = chargerStatus["added_energy"]
         addedGreenEnergy = chargerStatus["added_green_energy"]
         addedGridEnergy = chargerStatus["added_grid_energy"]
+        max_charging_current = chargerStatus["config_data"]["max_charging_current"]
 
-        factsMessage= f"ChargingSpeed: {chargingSpeed} AddedRange: {addedRange} AddedEnergy: {addedEnergy} AddedGreenEnergy: {addedGreenEnergy} AddedGridEnergy: {addedGridEnergy}"
+        factsMessage= f"ChargingSpeed: {chargingSpeed} AddedRange: {addedRange} AddedEnergy: {addedEnergy} AddedGreenEnergy: {addedGreenEnergy} AddedGridEnergy: {addedGridEnergy} Max Current {max_charging_current}"
         Domoticz.Debug('Wallbox Fun Facts: ' + factsMessage)
 
         lastSync = chargerStatus["last_sync"]
@@ -577,6 +603,27 @@ class WallboxPlugin:
             myUnit.Update(Log=True)
             Domoticz.Debug('Wallbox Added Green Energy Counter changed to: ' + sValue)
 
+        ## 12: Device MAX Charging Current (A)
+        myUnit = Devices[chargerId].Units[self.DEVICEMAXCHARGINGCURRENT]
+        max_charging_current = int(chargerStatus["config_data"]["max_charging_current"])
+        sValue = f"{max_charging_current}"
+        Domoticz.Debug('Wallbox Sensor MAX Charging Current: ' + sValue)
+
+        if myUnit.sValue != sValue:
+            myUnit.sValue = sValue
+            myUnit.Update(Log=True)
+            Domoticz.Debug('Wallbox Sensor MAX Charging Current changed to: ' + sValue)
+
+        ## 13: MAX Charging Selector
+        myUnit = Devices[chargerId].Units[self.DEVICESELECTHARGINGCURRENT]
+        max_charging_current = int(chargerStatus["config_data"]["max_charging_current"])
+        sValue = f"{max_charging_current}"
+        Domoticz.Debug('Wallbox Sensor MAX Charging Selector: ' + sValue)
+
+        if myUnit.sValue != sValue:
+            myUnit.sValue = sValue
+            myUnit.Update(Log=True)
+            Domoticz.Debug('Wallbox Sensor MAX Charging Selector changed to: ' + sValue)
 
     def onStop(self):
         Domoticz.Log("onStop called")
@@ -754,3 +801,4 @@ def UpdateDevice(AlwaysUpdate, Devices, Unit, nValue, sValue, **kwargs):
             if not kwargs.get('TimedOut', 0):
                 Devices[Unit].Touch()
     return Updated
+
